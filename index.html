@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FreeFrame Studio — free AI characters, images & motion clips</title>
 <meta name="description" content="Free AI creative studio: create characters, generate images, and turn them into motion clips. No sign-up, no credits.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22%3E%3Cstop offset=%220%22 stop-color=%22%237c5cff%22/%3E%3Cstop offset=%221%22 stop-color=%22%2322d3ee%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22url(%23g)%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -342,7 +343,7 @@ $('iGo').onclick=async()=>{
   const p=$('iPrompt').value.trim();if(!p)return toast('Describe the scene first');
   $('iGo').disabled=true;await genImages(p);$('iGo').disabled=false;
 };
-function animateImg(url){vSel={url};go('video');drawFrame(0)}
+function animateImg(url){vSel={url};go('video');drawFrame(.3)}
 
 // ---------- video generator (in-browser motion) ----------
 const MOVES=[{v:'push',l:'Push in'},{v:'pull',l:'Pull out'},{v:'panL',l:'Pan left'},{v:'panR',l:'Pan right'},{v:'tilt',l:'Tilt up'},{v:'orbit',l:'Orbit'},{v:'hand',l:'Handheld'},{v:'drift',l:'Dreamy drift'}];
@@ -350,16 +351,16 @@ const VAR=[{v:'16:9',l:'16:9',w:1280,h:720},{v:'9:16',l:'9:16 Reel',w:720,h:1280
 const FX=[{v:'clean',l:'Clean'},{v:'film',l:'Film grain'},{v:'bars',l:'Letterbox'},{v:'noir',l:'Noir'},{v:'warm',l:'Warm'}];
 let vMove='push',vAR='16:9',vFx='film',vSel=null,vImg=null;
 chips('vMove',MOVES,vMove,v=>{vMove=v;preview()});
-chips('vAR',VAR,vAR,v=>{vAR=v;sizeCan();drawFrame(0)});
+chips('vAR',VAR,vAR,v=>{vAR=v;sizeCan();drawFrame(.3)});
 chips('vFx',FX,vFx,v=>{vFx=v;drawFrame(.35)});
 $('vDur').oninput=e=>$('vDurL').textContent=e.target.value;
 $('vCap').oninput=()=>drawFrame(.5);
-function sizeCan(){const a=VAR.find(x=>x.v===vAR),c=$('vCan');c.width=a.w;c.height=a.h;c.style.maxHeight='60vh'}
+function sizeCan(){const a=VAR.find(x=>x.v===vAR),c=$('vCan');c.width=a.w;c.height=a.h;c.style.maxHeight='60vh';if(!vSel){const x=c.getContext('2d');x.fillStyle='#14141c';x.fillRect(0,0,c.width,c.height);x.fillStyle='#9a9ab0';x.textAlign='center';x.font=`500 ${Math.round(Math.min(c.width,c.height)*.045)}px Inter, sans-serif`;x.fillText('Pick or upload an image to preview',c.width/2,c.height/2)}}
 function renderSrc(){
   const imgs=lib.filter(x=>x.kind==='image');
   $('vSrc').innerHTML=imgs.length?imgs.map(x=>`<img data-k="${x.url}" class="${vSel&&vSel.url===x.url?'on':''}" onclick="pickSrc('${x.url}')" alt="">`).join(''):'<div class="note" style="grid-column:1/-1">No images yet — generate one or upload.</div>';
   hydrate($('vSrc'));
-  sizeCan();if(vSel)drawFrame(0);
+  sizeCan();if(vSel)drawFrame(.3);
 }
 function pickSrc(url){vSel={url};vImg=null;renderSrc()}
 $('vFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{vSel={url:r.result,local:true};vImg=null;renderSrc()};r.readAsDataURL(f)};
@@ -416,6 +417,8 @@ $('vGo').onclick=async()=>{
     const type=rec.mimeType||mime||'video/webm',ext=type.includes('mp4')?'mp4':'webm';
     const blob=new Blob(parts,{type}),url=URL.createObjectURL(blob);
     $('vOut').innerHTML=`<div class="tile"><video src="${url}" controls playsinline loop autoplay muted></video><div class="acts" style="padding-top:10px"><a class="btn sm" href="${url}" download="freeframe-${Date.now()}.${ext}">Download .${ext}</a><button class="btn ghost sm" onclick="preview()">Replay preview</button></div></div>`;
+    render(ctx,img,.5,c.width,c.height,dur);
+    const vv=$('vOut').querySelector('video');vv.addEventListener('loadeddata',()=>{try{if(vv.paused)vv.currentTime=.4}catch(_){}},{once:true});
     $('vStat').textContent=`Done — ${dur}s ${VAR.find(x=>x.v===vAR).l} clip.`;
     if(!vSel.local)addLib({kind:'video',url:vSel.url,prompt:`${MOVES.find(m=>m.v===vMove).l} · ${dur}s`,move:vMove});
   }catch(e){console.error(e);$('vStat').textContent='Render failed: '+e.message}
@@ -438,7 +441,7 @@ async function runTpl(i){
   const t=TPLS[i];go('image');$('iPrompt').value=t.s;
   iStyle=t.st;chips('iStyle',STYLES,iStyle,v=>iStyle=v);iAR=t.ar;chips('iAR',ARS,iAR,v=>iAR=v);
   vMove=t.m;vFx=t.fx;vAR=t.ar==='9:16'?'9:16':t.ar==='16:9'?'16:9':'1:1';
-  chips('vMove',MOVES,vMove,v=>{vMove=v;preview()});chips('vAR',VAR,vAR,v=>{vAR=v;sizeCan();drawFrame(0)});chips('vFx',FX,vFx,v=>{vFx=v;drawFrame(.35)});
+  chips('vMove',MOVES,vMove,v=>{vMove=v;preview()});chips('vAR',VAR,vAR,v=>{vAR=v;sizeCan();drawFrame(.3)});chips('vFx',FX,vFx,v=>{vFx=v;drawFrame(.35)});
   $('vCap').value=t.cap;
   toast('Template loaded — generating your shot');
   $('iGo').disabled=true;await genImages(t.s,{n:1});$('iGo').disabled=false;
@@ -460,7 +463,7 @@ async function dl(url,name){
   try{const b=await getBlob(url);if(!b)throw 0;const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`${name}-${Date.now()}.jpg`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
   catch(e){toast('Image not saved on this device')}
 }
-renderChars();
+renderChars();sizeCan();
 </script>
 </body>
 </html>
