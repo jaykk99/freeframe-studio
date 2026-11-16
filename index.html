@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreeFrame Studio — free AI characters, images & motion clips</title>
+<meta name="description" content="Free AI creative studio: create characters, generate images, and turn them into motion clips. No sign-up, no credits.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0b10;--panel:#14141c;--panel2:#1c1c27;--line:#2a2a38;--text:#ececf3;--muted:#9a9ab0;--accent:#7c5cff;--accent2:#22d3ee;--ok:#34d399;--warn:#fbbf24;--r:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+header{position:sticky;top:0;z-index:20;background:rgba(11,11,16,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.bar{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:12px 16px}
+.logo{font-weight:800;font-size:18px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;cursor:pointer}
+.logo i{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:inline-block}
+nav{display:flex;gap:4px;overflow-x:auto;flex:1;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:0;color:var(--muted);font:500 14px Inter;padding:8px 12px;border-radius:10px;cursor:pointer;white-space:nowrap}
+nav button.on,nav button:hover{color:var(--text);background:var(--panel2)}
+.free{font:700 11px Inter;color:#0b0b10;background:var(--ok);padding:4px 8px;border-radius:999px;white-space:nowrap}
+main{max-width:1200px;margin:0 auto;padding:20px 16px 80px}
+.view{display:none}.view.on{display:block}
+.hero{text-align:center;padding:48px 0 32px}
+.hero h1{font-size:clamp(32px,6vw,60px);font-weight:800;letter-spacing:-.03em;line-height:1.05}
+.hero h1 span{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--muted);margin:16px auto 24px;max-width:560px;font-size:17px;line-height:1.5}
+.btn{background:var(--accent);color:#fff;border:0;font:600 15px Inter;padding:12px 20px;border-radius:12px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:center;text-decoration:none}
+.btn:hover{filter:brightness(1.1)}.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:9px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:24px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;cursor:pointer;transition:.15s}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card h3{font-size:17px;margin:10px 0 6px}.card p{color:var(--muted);font-size:14px;line-height:1.45}
+.emoji{font-size:26px}
+.steps{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:30px;color:var(--muted);font-size:14px}
+.steps b{color:var(--text)}
+.studio{display:grid;grid-template-columns:380px 1fr;gap:18px}
+@media(max-width:860px){.studio{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.panel h2{font-size:20px;margin-bottom:4px}.sub{color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.45}
+label{display:block;font:600 12px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px}
+input[type=text],textarea,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);font:400 16px Inter;padding:11px 12px;border-radius:10px;outline:none}
+textarea{min-height:96px;resize:vertical;line-height:1.45}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--panel2);border:1px solid var(--line);color:var(--muted);font:500 13px Inter;padding:7px 11px;border-radius:999px;cursor:pointer}
+.chip.on{color:#fff;border-color:var(--accent);background:rgba(124,92,255,.18)}
+.row{display:flex;gap:10px;align-items:center}
+.row>*{flex:1}
+.cost{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:10px 12px;background:var(--panel2);border-radius:10px;font-size:13px;color:var(--muted)}
+.cost b{color:var(--ok)}
+.full{width:100%;margin-top:12px}
+.stage{min-height:420px;display:flex;flex-direction:column}
+.out{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;align-content:start}
+.empty{grid-column:1/-1;flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--muted);text-align:center;gap:8px;border:1px dashed var(--line);border-radius:12px;padding:40px;min-height:360px}
+.tile{position:relative;background:var(--panel2);border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.tile img,.tile video{width:100%;display:block;background:#000}
+.tile .meta{padding:10px;font-size:12px;color:var(--muted);line-height:1.4}
+.tile .acts{display:flex;gap:6px;padding:0 10px 10px;flex-wrap:wrap}
+.loading{aspect-ratio:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--muted);font-size:13px;background:linear-gradient(110deg,var(--panel2) 30%,#262634 50%,var(--panel2) 70%);background-size:200% 100%;animation:sh 1.4s infinite linear}
+@keyframes sh{to{background-position:-200% 0}}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.charpick{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.cp{flex:0 0 auto;width:72px;text-align:center;font-size:11px;color:var(--muted);cursor:pointer}
+.cp img,.cp .none{width:72px;height:72px;border-radius:12px;object-fit:cover;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--panel2);font-size:22px}
+.cp.on img,.cp.on .none{border-color:var(--accent)}
+.cp span{display:block;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;max-height:200px;overflow:auto}
+.src img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:2px solid transparent;cursor:pointer}
+.src img.on{border-color:var(--accent)}
+.drop{border:1px dashed var(--line);border-radius:10px;padding:12px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;margin-top:8px}
+canvas{max-width:100%;border-radius:12px;background:#000;display:block;margin:0 auto}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--panel2);border:1px solid var(--line);padding:12px 18px;border-radius:12px;font-size:14px;transition:.25s;z-index:50;max-width:90vw}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.tpls{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.tpl{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.tpl .art{aspect-ratio:16/9;display:flex;align-items:flex-end;padding:14px;font-weight:700;font-size:18px}
+.tpl .b{padding:14px}.tpl p{color:var(--muted);font-size:13px;line-height:1.45;margin-bottom:12px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.queue{font-size:12px;color:var(--warn);margin-top:8px;min-height:16px}
+.faq{max-width:760px;margin:40px auto 0}
+.faq details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:8px}
+.faq summary{font-weight:600;cursor:pointer}.faq p{color:var(--muted);font-size:14px;margin-top:8px;line-height:1.5}
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <div class="logo" onclick="go('home')"><i></i>FreeFrame</div>
+  <nav id="nav">
+    <button data-v="home" class="on">Home</button>
+    <button data-v="char">Character Creator</button>
+    <button data-v="image">Image Generator</button>
+    <button data-v="video">Video Generator</button>
+    <button data-v="tpl">Templates</button>
+    <button data-v="lib">Library</button>
+  </nav>
+  <span class="free">100% FREE</span>
+</div></header>
+
+<main>
+<!-- HOME -->
+<section class="view on" id="v-home">
+  <div class="hero">
+    <h1>Characters, images &amp; video.<br><span>No credits. No sign-up.</span></h1>
+    <p>Create a recurring character, drop them into any scene, then turn the shot into a cinematic motion clip — all free, right in your browser.</p>
+    <button class="btn" onclick="go('char')">Start creating →</button>
+    <div class="steps"><span><b>1.</b> Create a character</span>→<span><b>2.</b> Generate a scene</span>→<span><b>3.</b> Animate it</span>→<span><b>4.</b> Download</span></div>
+  </div>
+  <div class="cards">
+    <div class="card" onclick="go('char')"><div class="emoji">🧑‍🎨</div><h3>Character Creator</h3><p>Describe someone once and get a turnaround reference sheet. Their look stays locked for every scene.</p></div>
+    <div class="card" onclick="go('image')"><div class="emoji">🖼️</div><h3>Image Generator</h3><p>Text-to-image with Flux and Turbo models, any aspect ratio, with or without your characters.</p></div>
+    <div class="card" onclick="go('video')"><div class="emoji">🎬</div><h3>Video Generator</h3><p>Turn any image into a camera-move clip: push-in, pan, orbit, handheld, with grain and captions.</p></div>
+    <div class="card" onclick="go('tpl')"><div class="emoji">⚡</div><h3>Templates</h3><p>One-tap starting points — pick one, swap in your character, generate the whole shot.</p></div>
+  </div>
+  <div class="faq">
+    <details><summary>Is it really free?</summary><p>Yes. Images come from the open Pollinations.ai API, which needs no key or account. Motion clips render on your own device, so they cost nothing at all.</p></details>
+    <details><summary>Why do I sometimes wait between images?</summary><p>The free image API allows about one request every 15 seconds per visitor. FreeFrame queues your requests automatically and shows the countdown.</p></details>
+    <details><summary>Is the video "real" AI video?</summary><p>Not quite. Free video models don't have open no-key APIs, so FreeFrame animates your image with cinematic camera moves rendered in-browser. It's great for reels, intros and storyboards.</p></details>
+    <details><summary>Where are my creations saved?</summary><p>In your browser's local library on this device. Download anything you want to keep for good.</p></details>
+  </div>
+</section>
+
+<!-- CHARACTER -->
+<section class="view" id="v-char">
+  <div class="studio">
+    <div class="panel">
+      <h2>Character Creator</h2>
+      <div class="sub">Describe your character. You'll get a reference sheet and a locked seed so they look the same in every scene.</div>
+      <label>Name</label><input type="text" id="cName" placeholder="e.g. Nova">
+      <label>Appearance</label><textarea id="cDesc" placeholder="e.g. young woman, short silver hair, freckles, green bomber jacket, black cargo pants, white sneakers"></textarea>
+      <label>Style</label><div class="chips" id="cStyle"></div>
+      <div class="cost"><span>Cost</span><b>Free</b></div>
+      <button class="btn full" id="cGo">Create character</button>
+      <div class="queue" id="cQ"></div>
+    </div>
+    <div class="panel stage">
+      <h2>Your characters</h2><div class="sub">Tap "Use in scene" to send a character to the Image Generator.</div>
+      <div class="out" id="cOut"></div>
+    </div>
+  </div>
+</section>
+
+<!-- IMAGE -->
+<section class="view" id="v-image">
+  <div class="studio">
+    <div class="panel">
+      <h2>Image Generator</h2>
+      <div class="sub">Pick a character (optional) and describe the scene.</div>
+      <label>Character</label><div class="charpick" id="iChars"></div>
+      <label>Scene prompt</label><textarea id="iPrompt" placeholder="e.g. standing on a neon-lit rooftop in the rain at night, looking over the city"></textarea>
+      <label>Model</label><div class="chips" id="iModel"></div>
+      <label>Style</label><div class="chips" id="iStyle"></div>
+      <label>Aspect ratio</label><div class="chips" id="iAR"></div>
+      <label>Variations</label><div class="chips" id="iN"></div>
+      <div class="cost"><span>Cost</span><b>Free</b></div>
+      <button class="btn full" id="iGo">Generate</button>
+      <div class="queue" id="iQ"></div>
+    </div>
+    <div class="panel stage">
+      <h2>Results</h2><div class="sub">Everything is saved to your Library automatically.</div>
+      <div class="out" id="iOut"><div class="empty"><div class="emoji">🖼️</div>Your images will appear here</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- VIDEO -->
+<section class="view" id="v-video">
+  <div class="studio">
+    <div class="panel">
+      <h2>Video Generator</h2>
+      <div class="sub">Choose an image, pick a camera move, render a clip.</div>
+      <label>Source image</label>
+      <div class="src" id="vSrc"></div>
+      <div class="drop" onclick="document.getElementById('vFile').click()">📁 Or upload your own image</div>
+      <input type="file" id="vFile" accept="image/*" hidden>
+      <label>Camera move</label><div class="chips" id="vMove"></div>
+      <label>Format</label><div class="chips" id="vAR"></div>
+      <label>Duration: <span id="vDurL">5</span>s</label><input type="range" id="vDur" min="3" max="12" value="5">
+      <label>Caption (optional)</label><input type="text" id="vCap" placeholder="e.g. Chapter One">
+      <label>Look</label><div class="chips" id="vFx"></div>
+      <div class="cost"><span>Cost</span><b>Free · renders on your device</b></div>
+      <button class="btn full" id="vGo">Render video</button>
+    </div>
+    <div class="panel stage">
+      <h2>Preview</h2><div class="sub" id="vStat">Pick an image to start.</div>
+      <canvas id="vCan" width="1280" height="720"></canvas>
+      <div id="vOut" style="margin-top:14px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- TEMPLATES -->
+<section class="view" id="v-tpl">
+  <h2 style="font-size:26px;margin-bottom:6px">Templates</h2>
+  <div class="sub">Pick a template. If you have a character selected in the Image Generator, they'll be the star.</div>
+  <div class="tpls" id="tplGrid"></div>
+</section>
+
+<!-- LIBRARY -->
+<section class="view" id="v-lib">
+  <div class="row" style="justify-content:space-between;margin-bottom:14px">
+    <div><h2 style="font-size:26px">Library</h2><div class="sub" style="margin:0">Saved on this device.</div></div>
+    <button class="btn ghost sm" style="flex:0" onclick="clearLib()">Clear all</button>
+  </div>
+  <div class="out" id="libOut"></div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- helpers ----------
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast('Storage full — delete some items from Library')}}};
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),2800)}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+const rseed=()=>Math.floor(Math.random()*2e9);
+function chips(el,opts,val,onChange){
+  const box=$(el);box.innerHTML='';
+  opts.forEach(o=>{const b=document.createElement('button');b.className='chip'+(o.v===val?' on':'');b.textContent=o.l;
+    b.onclick=()=>{[...box.children].forEach(c=>c.classList.remove('on'));b.classList.add('on');onChange(o.v)};box.appendChild(b)});
+}
+
+// ---------- nav ----------
+function go(v){
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  if(v==='image')renderCharPick();if(v==='video')renderSrc();if(v==='lib')renderLib();if(v==='char')renderChars();
+  scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+
+// ---------- free image API with rate-limit queue ----------
+const GAP=16000;let lastReq=0;let chain=Promise.resolve();
+function imgURL(prompt,{w=1024,h=1024,seed=rseed(),model='flux'}={}){
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&model=${model}&nologo=true&private=true&referrer=freeframe-studio`;
+}
+function loadImg(url){return new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=()=>rej(new Error('Image failed'));i.src=url})}
+function queued(url,qEl){
+  const job=chain.then(async()=>{
+    let wait=lastReq+GAP-Date.now();
+    while(wait>0){if(qEl)qEl.textContent=`⏳ Free tier queue — starting in ${Math.ceil(wait/1000)}s`;await new Promise(r=>setTimeout(r,1000));wait=lastReq+GAP-Date.now()}
+    if(qEl)qEl.textContent='🎨 Generating…';
+    lastReq=Date.now();
+    let err;for(let a=0;a<2;a++){try{const i=await loadImg(url+(a?'&retry='+a:''));lastReq=Date.now();return i}catch(e){err=e;await new Promise(r=>setTimeout(r,GAP))}}
+    throw err;
+  });
+  chain=job.catch(()=>{}).then(()=>{if(qEl)qEl.textContent=''});
+  return job;
+}
+
+// ---------- data ----------
+const STYLES=[{v:'cinematic',l:'Cinematic',p:'cinematic film still, dramatic lighting, shallow depth of field, 35mm'},{v:'photo',l:'Photoreal',p:'photorealistic, highly detailed, natural light, 8k'},{v:'anime',l:'Anime',p:'anime style, clean line art, vibrant cel shading'},{v:'3d',l:'3D Animated',p:'3D animated movie style, soft global illumination, stylized'},{v:'comic',l:'Comic',p:'comic book art, bold ink outlines, halftone shading'},{v:'pixel',l:'Pixel Art',p:'detailed pixel art, 16-bit'},{v:'paint',l:'Painterly',p:'digital painting, visible brush strokes, concept art'},{v:'none',l:'None',p:''}];
+const sp=v=>(STYLES.find(s=>s.v===v)||{}).p||'';
+const MODELS=[{v:'flux',l:'Flux (quality)'},{v:'turbo',l:'Turbo (fast)'}];
+const ARS=[{v:'1:1',l:'1:1',w:1024,h:1024},{v:'16:9',l:'16:9',w:1280,h:720},{v:'9:16',l:'9:16',w:720,h:1280},{v:'4:5',l:'4:5',w:896,h:1120},{v:'3:2',l:'3:2',w:1200,h:800}];
+let chars=store.get('ff_chars',[]),lib=store.get('ff_lib',[]);
+chars=chars.filter(c=>!c.pending);
+const saveChars=()=>store.set('ff_chars',chars.filter(c=>!c.pending)),saveLib=()=>store.set('ff_lib',lib);
+function addLib(item){lib.unshift({id:Date.now()+Math.random(),t:Date.now(),...item});saveLib()}
+
+// ---------- characters ----------
+let cStyle='cinematic';
+chips('cStyle',STYLES.filter(s=>s.v!=='none'),cStyle,v=>cStyle=v);
+$('cGo').onclick=async()=>{
+  const name=$('cName').value.trim()||'Character',desc=$('cDesc').value.trim();
+  if(!desc)return toast('Describe what your character looks like');
+  const seed=rseed();
+  const prompt=`character reference sheet of ${desc}, full body turnaround, front view, three-quarter view, side view and back view, consistent outfit, neutral pose, plain light grey studio background, ${sp(cStyle)}`;
+  const url=imgURL(prompt,{w:1280,h:720,seed});
+  const id='c'+Date.now();
+  chars.unshift({id,name,desc,style:cStyle,seed,sheet:url,pending:true});renderChars();
+  $('cGo').disabled=true;
+  try{await queued(url,$('cQ'));const c=chars.find(x=>x.id===id);if(c){delete c.pending;saveChars();addLib({kind:'image',url,prompt:`${name} — reference sheet`})}toast(`${name} created`)}
+  catch(e){chars=chars.filter(x=>x.id!==id);toast('Generation failed — try again in a moment')}
+  $('cGo').disabled=false;renderChars();
+};
+function renderChars(){
+  const o=$('cOut');
+  if(!chars.length){o.innerHTML='<div class="empty"><div class="emoji">🧑‍🎨</div>No characters yet — create your first one</div>';return}
+  o.innerHTML=chars.map(c=>`<div class="tile">${c.pending?'<div class="loading" style="aspect-ratio:16/9"><div class="spin"></div>Drawing reference sheet…</div>':`<img src="${c.sheet}" crossorigin="anonymous" alt="">`}
+    <div class="meta"><b style="color:var(--text)">${esc(c.name)}</b><br>${esc(c.desc)}</div>
+    <div class="acts">${c.pending?'':`<button class="btn sm" onclick="useChar('${c.id}')">Use in scene</button><button class="btn ghost sm" onclick="dl('${c.sheet}','character-sheet')">Download</button>`}<button class="btn ghost sm" onclick="delChar('${c.id}')">Delete</button></div></div>`).join('');
+}
+function delChar(id){chars=chars.filter(c=>c.id!==id);saveChars();renderChars()}
+function useChar(id){iChar=id;go('image')}
+
+// ---------- image generator ----------
+let iChar=null,iModel='flux',iStyle='cinematic',iAR='16:9',iN=1;
+chips('iModel',MODELS,iModel,v=>iModel=v);
+chips('iStyle',STYLES,iStyle,v=>iStyle=v);
+chips('iAR',ARS,iAR,v=>iAR=v);
+chips('iN',[{v:1,l:'1'},{v:2,l:'2'},{v:4,l:'4'}],iN,v=>iN=v);
+function renderCharPick(){
+  const ready=chars.filter(c=>!c.pending);
+  $('iChars').innerHTML=`<div class="cp ${!iChar?'on':''}" onclick="iChar=null;renderCharPick()"><div class="none">∅</div><span>None</span></div>`+
+   ready.map(c=>`<div class="cp ${iChar===c.id?'on':''}" onclick="iChar='${c.id}';renderCharPick()"><img src="${c.sheet}" alt=""><span>${esc(c.name)}</span></div>`).join('')+
+   `<div class="cp" onclick="go('char')"><div class="none">＋</div><span>New</span></div>`;
+}
+async function genImages(scene,opts={}){
+  const c=chars.find(x=>x.id===(opts.char??iChar));
+  const style=opts.style||iStyle,ar=ARS.find(a=>a.v===(opts.ar||iAR)),n=opts.n||iN,model=opts.model||iModel;
+  const subject=c?`${c.desc}, `:'';
+  const prompt=`${subject}${scene}${sp(style)?', '+sp(style):''}`;
+  const o=$('iOut');if(o.querySelector('.empty'))o.innerHTML='';
+  const jobs=[];
+  for(let k=0;k<n;k++){
+    const seed=c&&k===0?c.seed:rseed();
+    const url=imgURL(prompt,{w:ar.w,h:ar.h,seed,model});
+    const t=document.createElement('div');t.className='tile';
+    t.innerHTML=`<div class="loading" style="aspect-ratio:${ar.w}/${ar.h}"><div class="spin"></div>Queued…</div>`;
+    o.prepend(t);
+    jobs.push(queued(url,$('iQ')).then(()=>{
+      t.innerHTML=`<img src="${url}" crossorigin="anonymous" alt=""><div class="meta">${esc(scene)}</div><div class="acts"><button class="btn sm" onclick="animateImg('${url}')">Animate</button><button class="btn ghost sm" onclick="dl('${url}','freeframe')">Download</button></div>`;
+      addLib({kind:'image',url,prompt:scene});
+    }).catch(()=>{t.innerHTML='<div class="meta">⚠️ Failed — the free API is busy. Try again.</div>'}));
+  }
+  await Promise.all(jobs);
+}
+$('iGo').onclick=async()=>{
+  const p=$('iPrompt').value.trim();if(!p)return toast('Describe the scene first');
+  $('iGo').disabled=true;await genImages(p);$('iGo').disabled=false;
+};
+function animateImg(url){vSel={url};go('video');drawFrame(0)}
+
+// ---------- video generator (in-browser motion) ----------
+const MOVES=[{v:'push',l:'Push in'},{v:'pull',l:'Pull out'},{v:'panL',l:'Pan left'},{v:'panR',l:'Pan right'},{v:'tilt',l:'Tilt up'},{v:'orbit',l:'Orbit'},{v:'hand',l:'Handheld'},{v:'drift',l:'Dreamy drift'}];
+const VAR=[{v:'16:9',l:'16:9',w:1280,h:720},{v:'9:16',l:'9:16 Reel',w:720,h:1280},{v:'1:1',l:'1:1',w:1080,h:1080}];
+const FX=[{v:'clean',l:'Clean'},{v:'film',l:'Film grain'},{v:'bars',l:'Letterbox'},{v:'noir',l:'Noir'},{v:'warm',l:'Warm'}];
+let vMove='push',vAR='16:9',vFx='film',vSel=null,vImg=null;
+chips('vMove',MOVES,vMove,v=>{vMove=v;preview()});
+chips('vAR',VAR,vAR,v=>{vAR=v;sizeCan();drawFrame(0)});
+chips('vFx',FX,vFx,v=>{vFx=v;drawFrame(.35)});
+$('vDur').oninput=e=>$('vDurL').textContent=e.target.value;
+$('vCap').oninput=()=>drawFrame(.5);
+function sizeCan(){const a=VAR.find(x=>x.v===vAR),c=$('vCan');c.width=a.w;c.height=a.h;c.style.maxHeight='60vh'}
+function renderSrc(){
+  const imgs=lib.filter(x=>x.kind==='image');
+  $('vSrc').innerHTML=imgs.length?imgs.map(x=>`<img src="${x.url}" crossorigin="anonymous" class="${vSel&&vSel.url===x.url?'on':''}" onclick="pickSrc('${x.url}')" alt="">`).join(''):'<div class="note" style="grid-column:1/-1">No images yet — generate one or upload.</div>';
+  sizeCan();if(vSel)drawFrame(0);
+}
+function pickSrc(url){vSel={url};vImg=null;renderSrc()}
+$('vFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{vSel={url:r.result,local:true};vImg=null;renderSrc()};r.readAsDataURL(f)};
+async function getVImg(){
+  if(vImg&&vImg._src===vSel.url)return vImg;
+  $('vStat').textContent='Loading image…';
+  let src=vSel.url;
+  if(!src.startsWith('data:')){const b=await (await fetch(src)).blob();src=URL.createObjectURL(b)}
+  vImg=await loadImg(src);vImg._src=vSel.url;$('vStat').textContent='Ready. Hit Render.';return vImg;
+}
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+let grain=null;
+function makeGrain(){grain=document.createElement('canvas');grain.width=grain.height=256;const g=grain.getContext('2d'),d=g.createImageData(256,256);for(let i=0;i<d.data.length;i+=4){const v=Math.random()*255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=22}g.putImageData(d,0,0)}
+function render(ctx,img,t,W,H,total){
+  const e=ease(t);let s=1.15,x=0,y=0,rot=0;
+  switch(vMove){
+    case'push':s=1.05+.3*e;break;case'pull':s=1.35-.3*e;break;
+    case'panL':s=1.25;x=.09-.18*e;break;case'panR':s=1.25;x=-.09+.18*e;break;
+    case'tilt':s=1.25;y=-.09+.18*e;break;
+    case'orbit':s=1.2+.1*Math.sin(e*Math.PI);x=.07*Math.sin(e*Math.PI*2);rot=.03*Math.sin(e*Math.PI*2);break;
+    case'hand':{const k=t*total;s=1.12;x=.008*Math.sin(k*2.1)+.005*Math.sin(k*5.3);y=.007*Math.cos(k*1.7)+.004*Math.sin(k*4.1);rot=.004*Math.sin(k*1.3);break}
+    case'drift':s=1.1+.12*e;x=.04*Math.sin(e*Math.PI);y=-.03*e;rot=.01*e;break;
+  }
+  const cover=Math.max(W/img.width,H/img.height)*s;
+  ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  ctx.filter=vFx==='noir'?'grayscale(1) contrast(1.25)':vFx==='warm'?'sepia(.25) saturate(1.2) contrast(1.05)':vFx==='film'?'contrast(1.08) saturate(.92)':'none';
+  ctx.translate(W/2+x*W,H/2+y*H);ctx.rotate(rot);
+  ctx.drawImage(img,-img.width*cover/2,-img.height*cover/2,img.width*cover,img.height*cover);
+  ctx.restore();ctx.filter='none';
+  if(vFx==='film'||vFx==='noir'){if(!grain)makeGrain();ctx.save();ctx.globalCompositeOperation='overlay';ctx.fillStyle=ctx.createPattern(grain,'repeat');ctx.translate(Math.random()*256,Math.random()*256);ctx.fillRect(-256,-256,W+512,H+512);ctx.restore()}
+  if(vFx!=='clean'){const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
+  if(vFx==='bars'){const b=H*.1;ctx.fillStyle='#000';ctx.fillRect(0,0,W,b);ctx.fillRect(0,H-b,W,b)}
+  const cap=$('vCap').value.trim();
+  if(cap){const a=Math.min(1,Math.max(0,(t-.15)/.15))*Math.min(1,Math.max(0,(1-t)/.12));ctx.save();ctx.globalAlpha=a;ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font=`700 ${Math.round(Math.min(W,H)*.065)}px Inter, sans-serif`;ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=20;ctx.fillText(cap,W/2,H*(vFx==='bars'?.84:.88));ctx.restore()}
+  const fi=Math.min(1,t/.06),fo=Math.min(1,(1-t)/.06);ctx.fillStyle=`rgba(0,0,0,${1-Math.min(fi,fo)})`;ctx.fillRect(0,0,W,H);
+}
+async function drawFrame(t){if(!vSel)return;try{const img=await getVImg();const c=$('vCan');render(c.getContext('2d'),img,t,c.width,c.height,+$('vDur').value)}catch(e){$('vStat').textContent='Could not load that image.'}}
+let prevRAF;
+async function preview(){if(!vSel)return;cancelAnimationFrame(prevRAF);const img=await getVImg(),c=$('vCan'),ctx=c.getContext('2d'),d=+$('vDur').value*1000,s=performance.now();
+  const f=n=>{const t=Math.min(1,(n-s)/d);render(ctx,img,t,c.width,c.height,d/1000);if(t<1)prevRAF=requestAnimationFrame(f)};prevRAF=requestAnimationFrame(f)}
+function pickMime(){const c=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||''}
+$('vGo').onclick=async()=>{
+  if(!vSel)return toast('Pick or upload an image first');
+  if(!window.MediaRecorder)return toast('Your browser can\'t record video — try Chrome or Safari');
+  cancelAnimationFrame(prevRAF);$('vGo').disabled=true;
+  try{
+    const img=await getVImg(),c=$('vCan'),ctx=c.getContext('2d'),dur=+$('vDur').value,mime=pickMime();
+    const stream=c.captureStream(30),rec=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:8e6}:{}),parts=[];
+    rec.ondataavailable=e=>e.data.size&&parts.push(e.data);
+    const done=new Promise(r=>rec.onstop=r);
+    rec.start(200);const s=performance.now();
+    await new Promise(res=>{const f=n=>{const t=Math.min(1,(n-s)/(dur*1000));render(ctx,img,t,c.width,c.height,dur);$('vStat').textContent=`Rendering… ${Math.round(t*100)}%`;if(t<1)requestAnimationFrame(f);else res()};requestAnimationFrame(f)});
+    rec.stop();await done;
+    const type=rec.mimeType||mime||'video/webm',ext=type.includes('mp4')?'mp4':'webm';
+    const blob=new Blob(parts,{type}),url=URL.createObjectURL(blob);
+    $('vOut').innerHTML=`<div class="tile"><video src="${url}" controls playsinline loop autoplay muted></video><div class="acts" style="padding-top:10px"><a class="btn sm" href="${url}" download="freeframe-${Date.now()}.${ext}">Download .${ext}</a><button class="btn ghost sm" onclick="preview()">Replay preview</button></div></div>`;
+    $('vStat').textContent=`Done — ${dur}s ${VAR.find(x=>x.v===vAR).l} clip.`;
+    if(!vSel.local)addLib({kind:'video',url:vSel.url,prompt:`${MOVES.find(m=>m.v===vMove).l} · ${dur}s`,move:vMove});
+  }catch(e){console.error(e);$('vStat').textContent='Render failed: '+e.message}
+  $('vGo').disabled=false;
+};
+
+// ---------- templates ----------
+const TPLS=[
+ {n:'Neon Noir',g:'linear-gradient(135deg,#0f172a,#7c3aed)',s:'standing alone on a rain-soaked neon street at night, reflections in puddles',st:'cinematic',ar:'16:9',m:'push',fx:'film',cap:''},
+ {n:'Hero Reel',g:'linear-gradient(135deg,#7c2d12,#f59e0b)',s:'heroic low-angle shot on a cliff edge at golden hour, wind in hair, epic clouds',st:'cinematic',ar:'9:16',m:'tilt',fx:'warm',cap:''},
+ {n:'Anime Opening',g:'linear-gradient(135deg,#be185d,#38bdf8)',s:'running through a field of cherry blossoms, petals swirling, bright sky',st:'anime',ar:'16:9',m:'panR',fx:'clean',cap:'Episode 1'},
+ {n:'Detective Story',g:'linear-gradient(135deg,#111,#525252)',s:'in a smoky 1940s office, venetian blind shadows across the face',st:'photo',ar:'16:9',m:'hand',fx:'noir',cap:''},
+ {n:'Product Hype',g:'linear-gradient(135deg,#064e3b,#22d3ee)',s:'holding a glowing energy drink can, studio backdrop, dramatic rim light',st:'photo',ar:'9:16',m:'orbit',fx:'clean',cap:'New drop'},
+ {n:'Fantasy Realm',g:'linear-gradient(135deg,#14532d,#a3e635)',s:'walking into an ancient glowing forest with giant mushrooms and fireflies',st:'paint',ar:'16:9',m:'drift',fx:'bars',cap:''},
+ {n:'Pixel Quest',g:'linear-gradient(135deg,#1e3a8a,#f472b6)',s:'adventurer standing outside a castle gate at sunset, retro game scene',st:'pixel',ar:'1:1',m:'pull',fx:'clean',cap:'Press Start'},
+ {n:'Cozy Morning',g:'linear-gradient(135deg,#78350f,#fde68a)',s:'sipping coffee by a sunny window in a cozy apartment with plants',st:'3d',ar:'4:5',m:'push',fx:'warm',cap:''}
+];
+$('tplGrid').innerHTML=TPLS.map((t,i)=>`<div class="tpl"><div class="art" style="background:${t.g}">${t.n}</div><div class="b"><p>${t.s}</p><button class="btn sm" onclick="runTpl(${i})">Use template</button></div></div>`).join('');
+async function runTpl(i){
+  const t=TPLS[i];go('image');$('iPrompt').value=t.s;
+  iStyle=t.st;chips('iStyle',STYLES,iStyle,v=>iStyle=v);iAR=t.ar;chips('iAR',ARS,iAR,v=>iAR=v);
+  vMove=t.m;vFx=t.fx;vAR=t.ar==='9:16'?'9:16':t.ar==='16:9'?'16:9':'1:1';
+  chips('vMove',MOVES,vMove,v=>{vMove=v;preview()});chips('vAR',VAR,vAR,v=>{vAR=v;sizeCan();drawFrame(0)});chips('vFx',FX,vFx,v=>{vFx=v;drawFrame(.35)});
+  $('vCap').value=t.cap;
+  toast('Template loaded — generating your shot');
+  $('iGo').disabled=true;await genImages(t.s,{n:1});$('iGo').disabled=false;
+  toast('Shot ready — tap Animate to make the clip');
+}
+
+// ---------- library ----------
+function renderLib(){
+  const o=$('libOut');
+  if(!lib.length){o.innerHTML='<div class="empty"><div class="emoji">📚</div>Nothing here yet</div>';return}
+  o.innerHTML=lib.map(x=>`<div class="tile"><img src="${x.url}" crossorigin="anonymous" alt="" loading="lazy"><div class="meta">${x.kind==='video'?'🎬 ':''}${esc(x.prompt||'')}<br>${new Date(x.t).toLocaleString()}</div>
+   <div class="acts"><button class="btn sm" onclick="animateImg('${x.url}')">${x.kind==='video'?'Re-render':'Animate'}</button><button class="btn ghost sm" onclick="dl('${x.url}','freeframe')">Download</button><button class="btn ghost sm" onclick="delLib(${x.id})">Delete</button></div></div>`).join('');
+}
+function delLib(id){lib=lib.filter(x=>x.id!==id);saveLib();renderLib()}
+function clearLib(){if(!lib.length)return;lib=[];saveLib();renderLib();toast('Library cleared')}
+async function dl(url,name){
+  try{const b=await (await fetch(url)).blob(),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`${name}-${Date.now()}.jpg`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
+  catch(e){window.open(url,'_blank')}
+}
+renderChars();
+</script>
+</body>
+</html>
