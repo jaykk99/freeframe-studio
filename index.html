@@ -17,6 +17,8 @@ header{position:sticky;top:0;z-index:20;background:rgba(11,11,16,.85);backdrop-f
 .logo{font-weight:800;font-size:18px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;cursor:pointer}
 .logo i{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:inline-block}
 nav{display:flex;gap:4px;overflow-x:auto;flex:1;scrollbar-width:none}
+@media(max-width:700px){.bar{flex-wrap:wrap;gap:10px}nav{order:3;flex-basis:100%;margin:0 -4px}.free{margin-left:auto}}
+img[data-k]:not([src]){aspect-ratio:16/9;background:var(--panel2)}
 nav::-webkit-scrollbar{display:none}
 nav button{background:none;border:0;color:var(--muted);font:500 14px Inter;padding:8px 12px;border-radius:10px;cursor:pointer;white-space:nowrap}
 nav button.on,nav button:hover{color:var(--text);background:var(--panel2)}
@@ -67,7 +69,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 @keyframes sp{to{transform:rotate(360deg)}}
 .charpick{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
 .cp{flex:0 0 auto;width:72px;text-align:center;font-size:11px;color:var(--muted);cursor:pointer}
-.cp img,.cp .none{width:72px;height:72px;border-radius:12px;object-fit:cover;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--panel2);font-size:22px}
+.cp img,.cp .none{width:72px;height:72px;border-radius:12px;object-fit:cover;object-position:12% 30%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--panel2);font-size:22px}
 .cp.on img,.cp.on .none{border-color:var(--accent)}
 .cp span{display:block;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .src{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;max-height:200px;overflow:auto}
@@ -154,7 +156,6 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       <div class="sub">Pick a character (optional) and describe the scene.</div>
       <label>Character</label><div class="charpick" id="iChars"></div>
       <label>Scene prompt</label><textarea id="iPrompt" placeholder="e.g. standing on a neon-lit rooftop in the rain at night, looking over the city"></textarea>
-      <label>Model</label><div class="chips" id="iModel"></div>
       <label>Style</label><div class="chips" id="iStyle"></div>
       <label>Aspect ratio</label><div class="chips" id="iAR"></div>
       <label>Variations</label><div class="chips" id="iN"></div>
@@ -240,6 +241,17 @@ const GAP=16000;let lastReq=0;let chain=Promise.resolve();
 function imgURL(prompt,{w=1024,h=1024,seed=rseed(),model='flux'}={}){
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&model=${model}&nologo=true&private=true&referrer=freeframe-studio`;
 }
+// --- device blob store (IndexedDB) so images are fetched from the API exactly once ---
+const idb=new Promise(res=>{try{const r=indexedDB.open('freeframe',1);r.onupgradeneeded=()=>r.result.createObjectStore('b');r.onsuccess=()=>res(r.result);r.onerror=()=>res(null)}catch(e){res(null)}});
+const mem=new Map(),urlCache=new Map();
+async function putBlob(k,b){mem.set(k,b);const d=await idb;if(!d)return;try{d.transaction('b','readwrite').objectStore('b').put(b,k)}catch(e){}}
+async function getBlob(k){if(mem.has(k))return mem.get(k);const d=await idb;if(!d)return null;return new Promise(r=>{try{const q=d.transaction('b').objectStore('b').get(k);q.onsuccess=()=>{if(q.result)mem.set(k,q.result);r(q.result||null)};q.onerror=()=>r(null)}catch(e){r(null)}})}
+async function delBlob(k){mem.delete(k);const u=urlCache.get(k);if(u){URL.revokeObjectURL(u);urlCache.delete(k)}const d=await idb;if(d)try{d.transaction('b','readwrite').objectStore('b').delete(k)}catch(e){}}
+async function blobURL(k){if(urlCache.has(k))return urlCache.get(k);const b=await getBlob(k);if(!b)return null;const u=URL.createObjectURL(b);urlCache.set(k,u);return u}
+async function hydrate(root){for(const im of (root||document).querySelectorAll('img[data-k]:not([src])')){const u=await blobURL(im.dataset.k);if(u)im.src=u;else im.closest('.tile,.cp,.src')&&im.replaceWith(Object.assign(document.createElement('div'),{className:'meta',textContent:'Image no longer on this device'}))}}
+async function fetchImage(url,ms=120000){const ac=new AbortController(),t=setTimeout(()=>ac.abort(),ms);
+  try{const r=await fetch(url,{signal:ac.signal});if(!r.ok)throw new Error('HTTP '+r.status);const b=await r.blob();if(!b.type.startsWith('image/')||b.size<2000)throw new Error('Bad image');return b}
+  catch(e){throw e.name==='AbortError'?new Error('Timed out'):e}finally{clearTimeout(t)}}
 function loadImg(url){return new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=()=>rej(new Error('Image failed'));i.src=url})}
 function queued(url,qEl){
   const job=chain.then(async()=>{
@@ -247,7 +259,7 @@ function queued(url,qEl){
     while(wait>0){if(qEl)qEl.textContent=`⏳ Free tier queue — starting in ${Math.ceil(wait/1000)}s`;await new Promise(r=>setTimeout(r,1000));wait=lastReq+GAP-Date.now()}
     if(qEl)qEl.textContent='🎨 Generating…';
     lastReq=Date.now();
-    let err;for(let a=0;a<2;a++){try{const i=await loadImg(url+(a?'&retry='+a:''));lastReq=Date.now();return i}catch(e){err=e;await new Promise(r=>setTimeout(r,GAP))}}
+    let err;for(let a=0;a<2;a++){try{if(a&&qEl)qEl.textContent='🔁 Busy — retrying…';const b=await fetchImage(url+(a?'&retry='+a:''));lastReq=Date.now();await putBlob(url,b);return b}catch(e){err=e;lastReq=Date.now();await new Promise(r=>setTimeout(r,GAP))}}
     throw err;
   });
   chain=job.catch(()=>{}).then(()=>{if(qEl)qEl.textContent=''});
@@ -283,28 +295,29 @@ $('cGo').onclick=async()=>{
 function renderChars(){
   const o=$('cOut');
   if(!chars.length){o.innerHTML='<div class="empty"><div class="emoji">🧑‍🎨</div>No characters yet — create your first one</div>';return}
-  o.innerHTML=chars.map(c=>`<div class="tile">${c.pending?'<div class="loading" style="aspect-ratio:16/9"><div class="spin"></div>Drawing reference sheet…</div>':`<img src="${c.sheet}" crossorigin="anonymous" alt="">`}
+  o.innerHTML=chars.map(c=>`<div class="tile">${c.pending?'<div class="loading" style="aspect-ratio:16/9"><div class="spin"></div>Drawing reference sheet…</div>':`<img data-k="${c.sheet}" alt="">`}
     <div class="meta"><b style="color:var(--text)">${esc(c.name)}</b><br>${esc(c.desc)}</div>
     <div class="acts">${c.pending?'':`<button class="btn sm" onclick="useChar('${c.id}')">Use in scene</button><button class="btn ghost sm" onclick="dl('${c.sheet}','character-sheet')">Download</button>`}<button class="btn ghost sm" onclick="delChar('${c.id}')">Delete</button></div></div>`).join('');
+  hydrate(o);
 }
 function delChar(id){chars=chars.filter(c=>c.id!==id);saveChars();renderChars()}
 function useChar(id){iChar=id;go('image')}
 
 // ---------- image generator ----------
 let iChar=null,iModel='flux',iStyle='cinematic',iAR='16:9',iN=1;
-chips('iModel',MODELS,iModel,v=>iModel=v);
 chips('iStyle',STYLES,iStyle,v=>iStyle=v);
 chips('iAR',ARS,iAR,v=>iAR=v);
 chips('iN',[{v:1,l:'1'},{v:2,l:'2'},{v:4,l:'4'}],iN,v=>iN=v);
 function renderCharPick(){
   const ready=chars.filter(c=>!c.pending);
   $('iChars').innerHTML=`<div class="cp ${!iChar?'on':''}" onclick="iChar=null;renderCharPick()"><div class="none">∅</div><span>None</span></div>`+
-   ready.map(c=>`<div class="cp ${iChar===c.id?'on':''}" onclick="iChar='${c.id}';renderCharPick()"><img src="${c.sheet}" alt=""><span>${esc(c.name)}</span></div>`).join('')+
+   ready.map(c=>`<div class="cp ${iChar===c.id?'on':''}" onclick="iChar='${c.id}';renderCharPick()"><img data-k="${c.sheet}" alt=""><span>${esc(c.name)}</span></div>`).join('')+
    `<div class="cp" onclick="go('char')"><div class="none">＋</div><span>New</span></div>`;
+  hydrate($('iChars'));
 }
 async function genImages(scene,opts={}){
   const c=chars.find(x=>x.id===(opts.char??iChar));
-  const style=opts.style||iStyle,ar=ARS.find(a=>a.v===(opts.ar||iAR)),n=opts.n||iN,model=opts.model||iModel;
+  const style=opts.style||iStyle,ar=ARS.find(a=>a.v===(opts.ar||iAR)),n=opts.n||iN,model='flux';
   const subject=c?`${c.desc}, `:'';
   const prompt=`${subject}${scene}${sp(style)?', '+sp(style):''}`;
   const o=$('iOut');if(o.querySelector('.empty'))o.innerHTML='';
@@ -316,9 +329,9 @@ async function genImages(scene,opts={}){
     t.innerHTML=`<div class="loading" style="aspect-ratio:${ar.w}/${ar.h}"><div class="spin"></div>Queued…</div>`;
     o.prepend(t);
     jobs.push(queued(url,$('iQ')).then(()=>{
-      t.innerHTML=`<img src="${url}" crossorigin="anonymous" alt=""><div class="meta">${esc(scene)}</div><div class="acts"><button class="btn sm" onclick="animateImg('${url}')">Animate</button><button class="btn ghost sm" onclick="dl('${url}','freeframe')">Download</button></div>`;
-      addLib({kind:'image',url,prompt:scene});
-    }).catch(()=>{t.innerHTML='<div class="meta">⚠️ Failed — the free API is busy. Try again.</div>'}));
+      t.innerHTML=`<img data-k="${url}" alt=""><div class="meta">${esc(scene)}</div><div class="acts"><button class="btn sm" onclick="animateImg('${url}')">Animate</button><button class="btn ghost sm" onclick="dl('${url}','freeframe')">Download</button></div>`;
+      addLib({kind:'image',url,prompt:scene});hydrate(t);
+    }).catch(e=>{t.innerHTML=`<div class="meta">⚠️ ${esc(e.message)} — the free API is busy. Try again in a minute.</div>`}));
   }
   await Promise.all(jobs);
 }
@@ -341,7 +354,8 @@ $('vCap').oninput=()=>drawFrame(.5);
 function sizeCan(){const a=VAR.find(x=>x.v===vAR),c=$('vCan');c.width=a.w;c.height=a.h;c.style.maxHeight='60vh'}
 function renderSrc(){
   const imgs=lib.filter(x=>x.kind==='image');
-  $('vSrc').innerHTML=imgs.length?imgs.map(x=>`<img src="${x.url}" crossorigin="anonymous" class="${vSel&&vSel.url===x.url?'on':''}" onclick="pickSrc('${x.url}')" alt="">`).join(''):'<div class="note" style="grid-column:1/-1">No images yet — generate one or upload.</div>';
+  $('vSrc').innerHTML=imgs.length?imgs.map(x=>`<img data-k="${x.url}" class="${vSel&&vSel.url===x.url?'on':''}" onclick="pickSrc('${x.url}')" alt="">`).join(''):'<div class="note" style="grid-column:1/-1">No images yet — generate one or upload.</div>';
+  hydrate($('vSrc'));
   sizeCan();if(vSel)drawFrame(0);
 }
 function pickSrc(url){vSel={url};vImg=null;renderSrc()}
@@ -350,7 +364,7 @@ async function getVImg(){
   if(vImg&&vImg._src===vSel.url)return vImg;
   $('vStat').textContent='Loading image…';
   let src=vSel.url;
-  if(!src.startsWith('data:')){const b=await (await fetch(src)).blob();src=URL.createObjectURL(b)}
+  if(!src.startsWith('data:')){src=await blobURL(src);if(!src)throw new Error('missing')}
   vImg=await loadImg(src);vImg._src=vSel.url;$('vStat').textContent='Ready. Hit Render.';return vImg;
 }
 const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
@@ -432,14 +446,16 @@ async function runTpl(i){
 function renderLib(){
   const o=$('libOut');
   if(!lib.length){o.innerHTML='<div class="empty"><div class="emoji">📚</div>Nothing here yet</div>';return}
-  o.innerHTML=lib.map(x=>`<div class="tile"><img src="${x.url}" crossorigin="anonymous" alt="" loading="lazy"><div class="meta">${x.kind==='video'?'🎬 ':''}${esc(x.prompt||'')}<br>${new Date(x.t).toLocaleString()}</div>
+  o.innerHTML=lib.map(x=>`<div class="tile"><img data-k="${x.url}" alt=""><div class="meta">${x.kind==='video'?'🎬 ':''}${esc(x.prompt||'')}<br>${new Date(x.t).toLocaleString()}</div>
    <div class="acts"><button class="btn sm" onclick="animateImg('${x.url}')">${x.kind==='video'?'Re-render':'Animate'}</button><button class="btn ghost sm" onclick="dl('${x.url}','freeframe')">Download</button><button class="btn ghost sm" onclick="delLib(${x.id})">Delete</button></div></div>`).join('');
+  hydrate(o);
 }
-function delLib(id){lib=lib.filter(x=>x.id!==id);saveLib();renderLib()}
-function clearLib(){if(!lib.length)return;lib=[];saveLib();renderLib();toast('Library cleared')}
+function gc(){const keep=new Set([...lib.map(x=>x.url),...chars.map(c=>c.sheet)]);for(const k of [...urlCache.keys()])if(!keep.has(k))delBlob(k)}
+function delLib(id){const x=lib.find(y=>y.id===id);lib=lib.filter(y=>y.id!==id);saveLib();renderLib();if(x&&!lib.some(y=>y.url===x.url)&&!chars.some(c=>c.sheet===x.url))delBlob(x.url)}
+function clearLib(){if(!lib.length)return;const ks=lib.map(x=>x.url);lib=[];saveLib();renderLib();ks.forEach(k=>{if(!chars.some(c=>c.sheet===k))delBlob(k)});toast('Library cleared')}
 async function dl(url,name){
-  try{const b=await (await fetch(url)).blob(),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`${name}-${Date.now()}.jpg`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
-  catch(e){window.open(url,'_blank')}
+  try{const b=await getBlob(url);if(!b)throw 0;const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`${name}-${Date.now()}.jpg`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
+  catch(e){toast('Image not saved on this device')}
 }
 renderChars();
 </script>
