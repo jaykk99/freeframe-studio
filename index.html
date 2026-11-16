@@ -237,7 +237,7 @@ function go(v){
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 
 // ---------- free image API with rate-limit queue ----------
-const GAP=46000; // Pollinations free tier: 1 image / 45s per IPlet lastReq=0;let chain=Promise.resolve();
+const GAP=46000; /* Pollinations free tier: 1 image / 45s per IP */let lastReq=0;let chain=Promise.resolve();
 function imgURL(prompt,{w=1024,h=1024,seed=rseed(),model='flux'}={}){
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&model=${model}&nologo=true&private=true&referrer=freeframe-studio`;
 }
