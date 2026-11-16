@@ -122,7 +122,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   </div>
   <div class="faq">
     <details><summary>Is it really free?</summary><p>Yes. Images come from the open Pollinations.ai API, which needs no key or account. Motion clips render on your own device, so they cost nothing at all.</p></details>
-    <details><summary>Why do I sometimes wait between images?</summary><p>The free image API allows about one request every 15 seconds per visitor. FreeFrame queues your requests automatically and shows the countdown.</p></details>
+    <details><summary>Why do I sometimes wait between images?</summary><p>The free image API allows one image every 45 seconds per visitor. FreeFrame queues your requests automatically and shows the countdown.</p></details>
     <details><summary>Is the video "real" AI video?</summary><p>Not quite. Free video models don't have open no-key APIs, so FreeFrame animates your image with cinematic camera moves rendered in-browser. It's great for reels, intros and storyboards.</p></details>
     <details><summary>Where are my creations saved?</summary><p>In your browser's local library on this device. Download anything you want to keep for good.</p></details>
   </div>
@@ -237,7 +237,7 @@ function go(v){
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 
 // ---------- free image API with rate-limit queue ----------
-const GAP=16000;let lastReq=0;let chain=Promise.resolve();
+const GAP=46000; // Pollinations free tier: 1 image / 45s per IPlet lastReq=0;let chain=Promise.resolve();
 function imgURL(prompt,{w=1024,h=1024,seed=rseed(),model='flux'}={}){
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&model=${model}&nologo=true&private=true&referrer=freeframe-studio`;
 }
@@ -250,16 +250,19 @@ async function delBlob(k){mem.delete(k);const u=urlCache.get(k);if(u){URL.revoke
 async function blobURL(k){if(urlCache.has(k))return urlCache.get(k);const b=await getBlob(k);if(!b)return null;const u=URL.createObjectURL(b);urlCache.set(k,u);return u}
 async function hydrate(root){for(const im of (root||document).querySelectorAll('img[data-k]:not([src])')){const u=await blobURL(im.dataset.k);if(u)im.src=u;else im.closest('.tile,.cp,.src')&&im.replaceWith(Object.assign(document.createElement('div'),{className:'meta',textContent:'Image no longer on this device'}))}}
 async function fetchImage(url,ms=120000){const ac=new AbortController(),t=setTimeout(()=>ac.abort(),ms);
-  try{const r=await fetch(url,{signal:ac.signal});if(!r.ok)throw new Error('HTTP '+r.status);const b=await r.blob();if(!b.type.startsWith('image/')||b.size<2000)throw new Error('Bad image');return b}
+  try{const r=await fetch(url,{signal:ac.signal});
+    if(!r.ok){let wait=+r.headers.get('retry-after')||0,msg='HTTP '+r.status;try{const j=await r.json();const m=/Retry after (\d+)s/i.exec(j.error?.message||'');if(m)wait=+m[1];msg=j.error?.code||msg}catch(_){}
+      const e=new Error(msg);e.retryAfter=wait||(r.status===402||r.status===429?45:0);throw e}const b=await r.blob();if(!b.type.startsWith('image/')||b.size<2000)throw new Error('Bad image');return b}
   catch(e){throw e.name==='AbortError'?new Error('Timed out'):e}finally{clearTimeout(t)}}
 function loadImg(url){return new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=()=>rej(new Error('Image failed'));i.src=url})}
 function queued(url,qEl){
   const job=chain.then(async()=>{
-    let wait=lastReq+GAP-Date.now();
-    while(wait>0){if(qEl)qEl.textContent=`⏳ Free tier queue — starting in ${Math.ceil(wait/1000)}s`;await new Promise(r=>setTimeout(r,1000));wait=lastReq+GAP-Date.now()}
-    if(qEl)qEl.textContent='🎨 Generating…';
-    lastReq=Date.now();
-    let err;for(let a=0;a<2;a++){try{if(a&&qEl)qEl.textContent='🔁 Busy — retrying…';const b=await fetchImage(url+(a?'&retry='+a:''));lastReq=Date.now();await putBlob(url,b);return b}catch(e){err=e;lastReq=Date.now();await new Promise(r=>setTimeout(r,GAP))}}
+    const countdown=async(until,label)=>{let w=until-Date.now();while(w>0){if(qEl)qEl.textContent=`⏳ ${label} — starting in ${Math.ceil(w/1000)}s`;await new Promise(r=>setTimeout(r,500));w=until-Date.now()}};
+    await countdown(lastReq+GAP,'Free tier: 1 image every 45s');
+    let err;for(let a=0;a<4;a++){
+      if(qEl)qEl.textContent=a?'🔁 Retrying…':'🎨 Generating…';lastReq=Date.now();
+      try{const b=await fetchImage(url);lastReq=Date.now();await putBlob(url,b);return b}
+      catch(e){err=e;if(e.name==='AbortError'||e.message==='Timed out'&&a>=1)break;await countdown(Date.now()+((e.retryAfter||10)+1)*1000,'Free limit hit, waiting')}}
     throw err;
   });
   chain=job.catch(()=>{}).then(()=>{if(qEl)qEl.textContent=''});
