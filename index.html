@@ -45,6 +45,7 @@ h2.t{font-size:26px;margin-bottom:4px}
 .steps b{color:var(--text)}
 .studio{display:grid;grid-template-columns:400px 1fr;gap:18px;align-items:start}
 @media(max-width:900px){.studio{grid-template-columns:1fr}}
+.studio>*,.out>*{min-width:0}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
 .panel h2{font-size:20px;margin-bottom:4px}.sub{color:var(--muted);font-size:13px;margin-bottom:14px;line-height:1.45}
 label,.lbl{display:block;font:600 12px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px}
@@ -99,7 +100,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .faq details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:8px}
 .faq summary{font-weight:600;cursor:pointer}.faq p{color:var(--muted);font-size:14px;margin-top:8px;line-height:1.5}
 .hist{display:flex;flex-direction:column;gap:4px;max-height:150px;overflow:auto}
-.hist button{text-align:left;background:var(--panel2);border:1px solid var(--line);color:var(--muted);font:400 12px Inter;padding:7px 9px;border-radius:8px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist button{max-width:100%;text-align:left;background:var(--panel2);border:1px solid var(--line);color:var(--muted);font:400 12px Inter;padding:7px 9px;border-radius:8px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hist button:hover{color:var(--text)}
 .sec{border-top:1px solid var(--line);margin-top:14px;padding-top:4px}
 .sl{display:grid;grid-template-columns:96px 1fr 38px;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin:6px 0}
@@ -114,6 +115,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .modal.on{display:flex}
 .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(520px,100%)}
 .modal img{width:100%;border-radius:10px;max-height:240px;object-fit:contain;background:#000}
+.more{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#ffffff05}.more summary{cursor:pointer;font:600 13px Inter;color:var(--muted)}.more[open] summary{margin-bottom:4px}
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 </style>
 </head>
@@ -170,15 +172,17 @@ input[type=range]{width:100%;accent-color:var(--accent)}
         <div class="row"><button class="btn ghost xs" id="iSurprise">🎲 Surprise me</button><button class="btn ghost xs" id="iEnhance">✨ Enhance</button></div></div>
       <textarea id="iPrompt" style="margin-top:6px" placeholder="e.g. standing on a neon-lit rooftop in the rain at night, looking over the city"></textarea>
       <div class="queue" id="iTQ"></div>
-      <span class="lbl">Shot</span><div class="chips" id="iShot"></div>
-      <span class="lbl">Lighting</span><div class="chips" id="iLight"></div>
-      <span class="lbl">Lens / mood</span><div class="chips" id="iLens"></div>
       <span class="lbl">Style</span><div class="chips" id="iStyle"></div>
       <span class="lbl">Aspect ratio</span><div class="chips" id="iAR"></div>
       <span class="lbl">Images</span><div class="chips" id="iN"></div>
+      <details class="more"><summary>More options — shot, lighting, lens, seed</summary>
+      <span class="lbl">Shot</span><div class="chips" id="iShot"></div>
+      <span class="lbl">Lighting</span><div class="chips" id="iLight"></div>
+      <span class="lbl">Lens / mood</span><div class="chips" id="iLens"></div>
       <span class="lbl">Seed</span>
       <div class="row n"><input type="number" id="iSeed" placeholder="Random" class="grow"><button class="btn ghost sm" id="iSeedRnd" title="New random seed">🎲</button></div>
       <label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500;font-size:14px;color:var(--text)"><input type="checkbox" id="iBoost"> Server prompt boost (adds detail automatically)</label>
+      </details>
       <div class="cost"><span>Cost</span><b>Free</b></div>
       <button class="btn full" id="iGo">Generate</button>
       <div class="queue" id="iQ"></div>
@@ -359,6 +363,8 @@ function chips(el,opts,val,onChange,multi){
   opts.forEach(o=>{const b=document.createElement('button');b.className='chip'+((multi?val.includes(o.v):o.v===val)?' on':'');b.textContent=o.l;
     b.onclick=()=>{if(multi){b.classList.toggle('on');onChange(o.v,b.classList.contains('on'))}else{[...box.children].forEach(c=>c.classList.remove('on'));b.classList.add('on');onChange(o.v)}};box.appendChild(b)});
 }
+const narrow=()=>matchMedia('(max-width:900px)').matches;
+function showOut(el){if(narrow())setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),60)}
 function downloadBlob(b,name){const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
 
 // ================= nav =================
@@ -473,7 +479,8 @@ $('iSurprise').onclick=()=>{$('iPrompt').value=SURPRISE[Math.floor(Math.random()
 $('iEnhance').onclick=async()=>{
   const p=$('iPrompt').value.trim();if(!p)return toast('Write a short idea first');
   $('iEnhance').disabled=true;
-  try{let r=await askAI(`Rewrite this as one vivid, specific prompt for an AI image generator (subject, setting, composition, colours, mood). Max 60 words. Reply with the prompt only, no quotes: ${p}`,$('iTQ'));
+  const hasChar=iChars.length>0;
+  try{let r=await askAI(`Rewrite this as one vivid, specific prompt for an AI image generator (setting, action, composition, colours, mood). Max 60 words.${hasChar?' The main character is described separately: refer to them only as "the character" and do NOT describe their looks, clothes, age or gender.':''} Reply with the prompt only, no quotes: ${p}`,$('iTQ'));
     r=r.replace(/^["'\s]+|["'\s]+$/g,'').split('\n').filter(Boolean)[0]||r;$('iPrompt').value=r;toast('Prompt enhanced ✨')}
   catch(e){toast('Enhance failed: '+e.message)}
   $('iEnhance').disabled=false;
@@ -500,7 +507,7 @@ async function genImages(scene,opts={}){
   const {prompt,seed:cseed}=buildPrompt(scene,opts);
   const ar=ARS.find(a=>a.v===(opts.ar||iAR)),n=opts.n||iN;
   const fixed=opts.seed??($('iSeed').value?+$('iSeed').value:null);
-  const o=$('iOut');if(o.querySelector('.empty'))o.innerHTML='';
+  const o=$('iOut');if(o.querySelector('.empty'))o.innerHTML='';showOut(o.parentElement);
   hist=[scene,...hist.filter(h=>h!==scene)].slice(0,30);store.set('ff_hist',hist);renderHist();
   const jobs=[];
   for(let k=0;k<n;k++){
@@ -557,7 +564,7 @@ $('cGo').onclick=async()=>{
   let c;
   if(cEditId){c=chars.find(x=>x.id===cEditId);Object.assign(c,{name,desc,style:cStyle,seed,newSheet:url,pending:true})}
   else{c={id:'c'+Date.now(),name,desc,style:cStyle,seed,sheet:url,pending:true};chars.unshift(c)}
-  const editing=!!cEditId;cancelEdit();renderChars();$('cGo').disabled=true;
+  const editing=!!cEditId;cancelEdit();renderChars();showOut($('cOut').parentElement);$('cGo').disabled=true;
   try{await genImage(url,$('cQ'));if(c.newSheet){c.sheet=c.newSheet;delete c.newSheet}delete c.pending;saveChars();addLib({kind:'char',url,prompt:`${name} — reference sheet`,full:sheetPrompt(desc,cStyle),w:1280,h:720,ar:'16:9'});toast(editing?`${name} updated`:`${name} created`)}
   catch(e){if(editing){delete c.pending;delete c.newSheet}else chars=chars.filter(x=>x.id!==c.id);toast('Generation failed: '+e.message)}
   $('cGo').disabled=false;renderChars();
@@ -855,7 +862,7 @@ function videoResult(el,blob,ext,it){const url=URL.createObjectURL(blob);
 $('vGo').onclick=async()=>{
   if(!vSel)return toast('Pick or upload an image first');
   const ac=vAudio?new (window.AudioContext||window.webkitAudioContext)():null;
-  cancelAnimationFrame(prevRAF);$('vGo').disabled=true;
+  cancelAnimationFrame(prevRAF);$('vGo').disabled=true;showOut($('vCan').parentElement);
   try{
     const img=await getVImg();if(vMove==='parallax'&&!depthCache.has(img._src))await getDepth(img,m=>$('vStat').textContent=m);
     const c=$('vCan'),ctx=c.getContext('2d'),dur=+$('vDur').value;
@@ -905,7 +912,7 @@ $('sWrite').onclick=async()=>{
     const lines=r.split('\n').map(l=>l.trim()).filter(l=>/^\d+[\.\)]/.test(l)||l.includes('||'));
     const shots=lines.map(l=>{const [v,cap='']=l.replace(/^\d+[\.\)]\s*/,'').split('||');return {visual:v.replace(/\*+/g,'').trim(),caption:cap.replace(/\*+/g,'').replace(/^["'\s]+|["'\s]+$/g,'').trim()}}).filter(s=>s.visual).slice(0,sN);
     if(!shots.length)throw new Error('AI returned no shots — try again');
-    story={idea,char:sChar,style:sStyle,ar:sAR,shots};saveStory();renderStory();toast(`${shots.length} shots written ✍️`)}
+    story={idea,char:sChar,style:sStyle,ar:sAR,shots};saveStory();renderStory();showOut($('sShots').parentElement);toast(`${shots.length} shots written ✍️`)}
   catch(e){toast('Story writing failed: '+e.message)}
   $('sWrite').disabled=false};
 async function genShot(i){
@@ -928,7 +935,7 @@ $('sRender').onclick=async()=>{
   try{
     const imgs=[];for(const s of ready)imgs.push(await keyImg(s.key));
     const a=VAR.find(x=>x.v===sAR)||VAR[0],c=$('sCan');c.width=a.w;c.height=a.h;c.style.display='';c.style.maxHeight='50vh';const ctx=c.getContext('2d');
-    const D=+$('sDur').value,N=imgs.length,X=sTr==='cut'?0:.7,total=N*D,caps=$('sCaps').checked;
+    showOut(c);const D=+$('sDur').value,N=imgs.length,X=sTr==='cut'?0:.7,total=N*D,caps=$('sCaps').checked;
     const off=document.createElement('canvas');off.width=a.w;off.height=a.h;const ox=off.getContext('2d');
     const frame=(t,el)=>{const T=t*total,i=Math.min(N-1,Math.floor(T/D)),lt=(T-i*D)/(D+X);
       drawShot(ctx,imgs[i],STORY_MOVES[i%STORY_MOVES.length],sFx,Math.min(1,lt),a.w,a.h,D);
