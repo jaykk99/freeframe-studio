@@ -374,7 +374,16 @@ async function getVImg(){
 const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
 let grain=null;
 function makeGrain(){grain=document.createElement('canvas');grain.width=grain.height=256;const g=grain.getContext('2d'),d=g.createImageData(256,256);for(let i=0;i<d.data.length;i+=4){const v=Math.random()*255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=22}g.putImageData(d,0,0)}
+// pre-bake the colour grade once per (image, look, size) instead of every frame
+let baked=null;
+function bake(img,W,H){const key=img._src+'|'+vFx+'|'+W+'x'+H;if(baked&&baked.key===key)return baked.c;
+  const k=Math.min(1,1.45*Math.max(W/img.width,H/img.height)),c=document.createElement('canvas');
+  c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+  const x=c.getContext('2d');x.filter=vFx==='noir'?'grayscale(1) contrast(1.25)':vFx==='warm'?'sepia(.25) saturate(1.2) contrast(1.05)':vFx==='film'?'contrast(1.08) saturate(.92)':'none';
+  x.drawImage(img,0,0,c.width,c.height);baked={key,c};return c}
+let grainPat=null;
 function render(ctx,img,t,W,H,total){
+  img=bake(img,W,H);
   const e=ease(t);let s=1.15,x=0,y=0,rot=0;
   switch(vMove){
     case'push':s=1.05+.3*e;break;case'pull':s=1.35-.3*e;break;
@@ -386,11 +395,10 @@ function render(ctx,img,t,W,H,total){
   }
   const cover=Math.max(W/img.width,H/img.height)*s;
   ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
-  ctx.filter=vFx==='noir'?'grayscale(1) contrast(1.25)':vFx==='warm'?'sepia(.25) saturate(1.2) contrast(1.05)':vFx==='film'?'contrast(1.08) saturate(.92)':'none';
   ctx.translate(W/2+x*W,H/2+y*H);ctx.rotate(rot);
   ctx.drawImage(img,-img.width*cover/2,-img.height*cover/2,img.width*cover,img.height*cover);
-  ctx.restore();ctx.filter='none';
-  if(vFx==='film'||vFx==='noir'){if(!grain)makeGrain();ctx.save();ctx.globalCompositeOperation='overlay';ctx.fillStyle=ctx.createPattern(grain,'repeat');ctx.translate(Math.random()*256,Math.random()*256);ctx.fillRect(-256,-256,W+512,H+512);ctx.restore()}
+  ctx.restore();
+  if(vFx==='film'||vFx==='noir'){if(!grain)makeGrain();ctx.save();ctx.globalCompositeOperation='overlay';if(!grainPat||grainPat.ctx!==ctx){grainPat=ctx.createPattern(grain,'repeat');grainPat.ctx=ctx}ctx.fillStyle=grainPat;ctx.translate(Math.random()*256,Math.random()*256);ctx.fillRect(-256,-256,W+512,H+512);ctx.restore()}
   if(vFx!=='clean'){const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
   if(vFx==='bars'){const b=H*.1;ctx.fillStyle='#000';ctx.fillRect(0,0,W,b);ctx.fillRect(0,H-b,W,b)}
   const cap=$('vCap').value.trim();
