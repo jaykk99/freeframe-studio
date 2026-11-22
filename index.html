@@ -88,6 +88,11 @@ img[data-k]:not([src]){aspect-ratio:16/9;background:var(--panel2)}
 .drop{border:1px dashed var(--line);border-radius:10px;padding:12px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;margin-top:8px}
 canvas{max-width:100%;border-radius:12px;display:block;margin:0 auto}
 .note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px}
+.probox{margin:22px auto 0;max-width:560px;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:16px}
+.probox .row{display:flex;gap:8px;margin-top:10px}
+.probox .row input{flex:1}
+.err{color:#f87171}
+.probadge{display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;margin-left:6px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--panel2);border:1px solid var(--line);padding:12px 18px;border-radius:12px;font-size:14px;transition:.25s;z-index:60;max-width:90vw}
 .toast.on{transform:translateX(-50%) translateY(0)}
 .tpls{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
@@ -164,6 +169,19 @@ input[type=range]{width:100%;accent-color:var(--accent)}
     <h1>Your free AI studio.<br><span>Characters. Edits. Video. Stories.</span></h1>
     <p>Create a character once, put them in any scene, edit and upscale the shot, animate it in real 3D, or let AI write and build a whole story video. No credits, no sign-up.</p>
     <button class="btn" onclick="go('image')">Start creating →</button>
+    <div class="probox">
+      <div id="ffGateRow">
+        <b>FreeFrame Pro — $19 one-time</b><span class="probadge">PRO</span>
+        <p class="note" style="margin-top:6px">2K exports (2048px on the long edge) and a commercial-use licence for everything you make here. Free stays free: the same studio, 1024px exports, personal use.</p>
+        <div class="row"><input type="text" id="ffCode" placeholder="Monico access code (ML-....-....-....-....)" autocomplete="off" spellcheck="false"><button class="btn" onclick="ffUnlock()">Unlock Pro</button></div>
+        <div class="note" id="ffGateMsg"></div>
+        <p class="note">Bought Pro at Monico Labs? Paste your code above. Not yet — <a href="https://monico-labs-insta.onrender.com/" target="_blank" rel="noopener">get Pro at Monico Labs</a>.</p>
+      </div>
+      <div id="ffProRow" style="display:none">
+        <b>Pro unlocked<span id="ffProTier"></span>.</b>
+        <p class="note" style="margin-top:6px">Your images now export at up to 2048px on the long edge, and you hold a commercial-use licence for work made in FreeFrame Pro. Free users keep the same studio at 1024px.</p>
+      </div>
+    </div>
     <div class="steps"><span><b>1.</b> Character</span>→<span><b>2.</b> Scene</span>→<span><b>3.</b> Edit</span>→<span><b>4.</b> Animate</span>→<span><b>5.</b> Story</span></div>
   </div>
   <div class="cards">
@@ -178,6 +196,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   <div class="picks" id="homeStyles"></div>
   <div class="faq">
     <details><summary>Is it really free?</summary><p>Yes. Images and AI text come from the open Pollinations.ai API (no key, no account). Background removal, upscaling, 3D depth, editing and video all run on your own device.</p></details>
+    <details><summary>What does Pro unlock?</summary><p>Pro is a one-time $19 purchase at Monico Labs. It raises exports from 1024px to 2048px on the long edge and adds a commercial-use licence for what you make. Everything else stays free, with no sign-up.</p></details>
     <details><summary>Why is there a wait between images?</summary><p>The free API allows one image (and one AI text reply) every 45 seconds per visitor. FreeFrame queues everything and shows a countdown, so you can line up several jobs and walk away.</p></details>
     <details><summary>How does 3D parallax work?</summary><p>A small depth-estimation AI (Depth Anything) runs in your browser, works out what's near and far in your image, and the camera moves through it. The model downloads once (~27 MB) and is cached.</p></details>
     <details><summary>Is the video "real" AI video?</summary><p>No generative video model is free without a key, so FreeFrame animates your stills with camera moves and AI depth. Great for reels, intros, storyboards and stories.</p></details>
@@ -451,6 +470,77 @@ function askAI(prompt,qEl){return txtLimit(async()=>{const ac=new AbortControlle
   catch(e){if(e.name==='AbortError'){const x=new Error('Timed out');x.retryAfter=5;throw x}throw e}finally{clearTimeout(t)}},qEl)}
 function loadImg(url){return new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=()=>rej(new Error('Image failed'));i.src=url})}
 const isRemote=k=>typeof k==='string'&&k.startsWith('https://image.pollinations.ai/');
+// ===== FreeFrame Pro (Monico Labs) — START =====
+// Same deal as the other shop products (see code-runner): the buyer gets
+// an ML- code from the Monico Labs checkout, and the code is checked
+// against the shop hub (POST /api/auth/code). Pro unlocks only when a
+// grant names product "freeframe". Nothing is unlocked on a format guess
+// or when the hub cannot be reached — the message says which happened.
+// Pro unlocks: 2K exports (2048px long edge instead of 1024px) and a
+// commercial-use licence. Free stays exactly as it was.
+var HUB_API='https://monico-labs-hub.onrender.com';
+var proUnlocked=false,proTier='';
+function normalizeAccessCode(code){
+  var s=String(code||'').toUpperCase().replace(/[\s-]/g,'');
+  if(s.indexOf('ML')===0)s=s.slice(2);
+  s=s.replace(/O/g,'0').replace(/[IL]/g,'1');
+  if(!/^[0-9A-HJKMNP-TV-Z]{16}$/.test(s))return null;
+  return 'ML-'+s.match(/.{4}/g).join('-');
+}
+function proSize(w,h){
+  if(!proUnlocked)return{w:w,h:h};
+  var s=2048/Math.max(w,h);
+  return{w:Math.round(w*s),h:Math.round(h*s)};
+}
+function applyPro(){
+  proUnlocked=true;
+  var pr=$('ffProRow');if(pr)pr.style.display='block';
+  var gr=$('ffGateRow');if(gr)gr.style.display='none';
+  var pt=$('ffProTier');if(pt&&proTier)pt.textContent=' ('+proTier+')';
+  var fr=document.querySelector('.free');if(fr)fr.textContent='PRO \u2713';
+}
+async function checkCodeWithHub(code,quiet){
+  var msg=$('ffGateMsg');
+  if(!quiet&&msg)msg.textContent='Checking your code with the Monico Labs shop...';
+  var ac=new AbortController(),t=setTimeout(function(){ac.abort()},30000),r;
+  try{
+    r=await fetch(HUB_API+'/api/auth/code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code}),signal:ac.signal});
+  }catch(e){
+    if(e&&e.name==='AbortError')throw new Error('The shop took too long to answer — try again in a bit.');
+    throw new Error('Could not reach the shop — check your connection and try again.');
+  }finally{clearTimeout(t)}
+  if(r.status===401)throw new Error('That access code is not valid.');
+  if(!r.ok)throw new Error('The shop answered HTTP '+r.status+' — try again in a bit.');
+  var data=await r.json();
+  var grants=(data&&data.grants)||[],mine=null;
+  for(var i=0;i<grants.length;i++){if(grants[i]&&grants[i].product==='freeframe'){mine=grants[i];break}}
+  if(!mine)throw new Error('That code is real, but it does not include FreeFrame.');
+  try{localStorage.setItem('ff_hub_token',(data&&data.token)||'');localStorage.setItem('ff_code',code)}catch(e){}
+  proTier=mine.tier||'';
+  applyPro();
+}
+async function ffUnlock(){
+  var msg=$('ffGateMsg');
+  var code=normalizeAccessCode($('ffCode').value);
+  if(!code){
+    if(msg)msg.innerHTML='<span class="err">That does not look like a Monico access code. Codes look like ML-XXXX-XXXX-XXXX-XXXX.</span>';
+    return;
+  }
+  try{await checkCodeWithHub(code,false)}
+  catch(e){if(msg)msg.innerHTML='<span class="err">'+esc(e.message||String(e))+'</span>'}
+}
+(function initGate(){
+  var saved=null;
+  try{saved=localStorage.getItem('ff_code')}catch(e){}
+  if(!saved)return;
+  var inp=$('ffCode');if(inp)inp.value=saved;
+  checkCodeWithHub(saved,true).catch(function(){
+    var msg=$('ffGateMsg');
+    if(msg)msg.textContent='Saved code found — hit Unlock Pro to re-check it with the shop.';
+  });
+})();
+// ===== FreeFrame Pro (Monico Labs) — END =====
+
 
 // ================= data =================
 const STYLES=[
@@ -544,19 +634,19 @@ function buildPrompt(scene,{charIds=iChars,style=iStyle,shot=iShot,light=iLight,
 }
 async function genImages(scene,opts={}){
   const {prompt,seed:cseed}=buildPrompt(scene,opts);
-  const ar=ARS.find(a=>a.v===(opts.ar||iAR)),n=opts.n||iN;
+  const ar=ARS.find(a=>a.v===(opts.ar||iAR)),n=opts.n||iN,sz=proSize(ar.w,ar.h);
   const fixed=opts.seed??($('iSeed').value?+$('iSeed').value:null);
   const o=$('iOut');if(o.querySelector('.empty'))o.innerHTML='';showOut(o.parentElement);
   hist=[scene,...hist.filter(h=>h!==scene)].slice(0,30);store.set('ff_hist',hist);renderHist();
   const jobs=[];
   for(let k=0;k<n;k++){
     const seed=fixed!=null?fixed+k:(cseed&&k===0?cseed:rseed());
-    const url=opts.image?imgURL(prompt,{w:ar.w,h:ar.h,seed,image:opts.image}):imgURL(prompt,{w:ar.w,h:ar.h,seed,enhance:$('iBoost').checked});
+    const url=opts.image?imgURL(prompt,{w:sz.w,h:sz.h,seed,image:opts.image}):imgURL(prompt,{w:sz.w,h:sz.h,seed,enhance:$('iBoost').checked});
     const t=document.createElement('div');t.className='tile';
     t.innerHTML=`<div class="loading" style="aspect-ratio:${ar.w}/${ar.h}"><div class="spin"></div>${n>1||jobs.length?`Image ${k+1} of ${n} — queued`:'Queued…'}</div>`;
     o.prepend(t);
     jobs.push(genImage(url,$('iQ')).then(()=>{
-      const it=addLib({kind:opts.kind||'image',url,prompt:opts.label||scene,full:prompt,seed,w:ar.w,h:ar.h,ar:ar.v});
+      const it=addLib({kind:opts.kind||'image',url,prompt:opts.label||scene,full:prompt,seed,w:sz.w,h:sz.h,ar:ar.v});
       t.outerHTML=tileHTML(it);hydrate(o);
     }).catch(e=>{t.innerHTML=`<div class="meta">⚠️ ${esc(e.message)} — the free API is busy. Try again in a minute.</div>`}));
   }
@@ -567,11 +657,11 @@ $('iGo').onclick=async()=>{
   $('iGo').disabled=true;try{await genImages(p)}finally{$('iGo').disabled=false}
 };
 async function variations(id){const x=findLib(id);if(!x)return;go('image');toast('Making 2 variations…');
-  const ar=ARS.find(a=>a.v===x.ar)||ARS.find(a=>a.w===x.w&&a.h===x.h)||ARS[0];
+  const ar=ARS.find(a=>a.v===x.ar)||ARS.find(a=>a.w===x.w&&a.h===x.h)||ARS[0],sz=proSize(ar.w,ar.h);
   const o=$('iOut');if(o.querySelector('.empty'))o.innerHTML='';
-  await Promise.all([1,2].map(async k=>{const url=imgURL(x.full,{w:ar.w,h:ar.h,seed:rseed()});
+  await Promise.all([1,2].map(async k=>{const url=imgURL(x.full,{w:sz.w,h:sz.h,seed:rseed()});
     const t=document.createElement('div');t.className='tile';t.innerHTML=`<div class="loading" style="aspect-ratio:${ar.w}/${ar.h}"><div class="spin"></div>Variation ${k} — queued</div>`;o.prepend(t);
-    try{await genImage(url,$('iQ'));const it=addLib({kind:'image',url,prompt:x.prompt+' (variation)',full:x.full,w:ar.w,h:ar.h,ar:ar.v});t.outerHTML=tileHTML(it);hydrate(o)}catch(e){t.innerHTML=`<div class="meta">⚠️ ${esc(e.message)}</div>`}}));
+    try{await genImage(url,$('iQ'));const it=addLib({kind:'image',url,prompt:x.prompt+' (variation)',full:x.full,w:sz.w,h:sz.h,ar:ar.v});t.outerHTML=tileHTML(it);hydrate(o)}catch(e){t.innerHTML=`<div class="meta">⚠️ ${esc(e.message)}</div>`}}));
 }
 // remix (image-to-image, needs a public source URL = images generated here)
 let remixSrc=null;
@@ -579,12 +669,12 @@ async function openRemix(id){const x=findLib(id);if(!x||!isRemote(x.url))return;
 $('mGo').onclick=async()=>{
   const p=$('mPrompt').value.trim();if(!p)return toast('Describe the change');
   $('mRemix').classList.remove('on');go('image');
-  const x=remixSrc,ar=ARS.find(a=>a.w===x.w&&a.h===x.h)||ARS.find(a=>a.v===x.ar)||ARS[0];
+  const x=remixSrc,ar=ARS.find(a=>a.w===x.w&&a.h===x.h)||ARS.find(a=>a.v===x.ar)||ARS[0],sz=proSize(ar.w,ar.h);
   const full=`${p}. Keep the same subject and composition as the reference image. ${x.full?'Original: '+x.full.slice(0,300):''}`;
-  const url=imgURL(full,{w:ar.w,h:ar.h,seed:rseed(),image:x.url});
+  const url=imgURL(full,{w:sz.w,h:sz.h,seed:rseed(),image:x.url});
   const o=$('iOut');if(o.querySelector('.empty'))o.innerHTML='';
   const t=document.createElement('div');t.className='tile';t.innerHTML=`<div class="loading" style="aspect-ratio:${ar.w}/${ar.h}"><div class="spin"></div>Remixing — queued</div>`;o.prepend(t);
-  try{await genImage(url,$('iQ'));const it=addLib({kind:'remix',url,prompt:`Remix: ${p}`,full,w:ar.w,h:ar.h,ar:ar.v});t.outerHTML=tileHTML(it);hydrate(o)}
+  try{await genImage(url,$('iQ'));const it=addLib({kind:'remix',url,prompt:`Remix: ${p}`,full,w:sz.w,h:sz.h,ar:ar.v});t.outerHTML=tileHTML(it);hydrate(o)}
   catch(e){t.innerHTML=`<div class="meta">⚠️ ${esc(e.message)}</div>`}
 };
 
@@ -1005,11 +1095,11 @@ $('sWrite').onclick=async()=>{
   $('sWrite').disabled=false};
 async function genShot(i){
   const s=story.shots[i];if(!s||!s.visual.trim())return toast('Shot '+(i+1)+' needs a description');
-  const ar=ARS.find(a=>a.v===sAR)||ARS[1],c=chars.find(x=>x.id===sChar);
+  const ar=ARS.find(a=>a.v===sAR)||ARS[1],sz=proSize(ar.w,ar.h),c=chars.find(x=>x.id===sChar);
   const {prompt}=buildPrompt(s.visual,{charIds:c?[c.id]:[],style:sStyle,shot:'',light:'',lens:[]});
-  const url=imgURL(prompt,{w:ar.w,h:ar.h,seed:c?c.seed+i:rseed()});
+  const url=imgURL(prompt,{w:sz.w,h:sz.h,seed:c?c.seed+i:rseed()});
   s.busy=true;renderStory();
-  try{await genImage(url,$('sQ'));s.key=url;addLib({kind:'image',url,prompt:`Story shot ${i+1}: ${s.visual.slice(0,90)}`,full:prompt,w:ar.w,h:ar.h,ar:ar.v})}
+  try{await genImage(url,$('sQ'));s.key=url;addLib({kind:'image',url,prompt:`Story shot ${i+1}: ${s.visual.slice(0,90)}`,full:prompt,w:sz.w,h:sz.h,ar:ar.v})}
   catch(e){toast(`Shot ${i+1} failed: ${e.message}`)}
   s.busy=false;saveStory();renderStory()}
 $('sGen').onclick=async()=>{const todo=story.shots.map((s,i)=>i).filter(i=>!story.shots[i].key);if(!todo.length)return toast(story.shots.length?'All scenes ready — render the video!':'Add some shots first');
