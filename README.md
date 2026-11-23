@@ -14,6 +14,6 @@ Free AI creative studio — an OpenArt / tezu-style toolkit that runs on free AP
 | Story | AI writes the shots, generates each scene, cuts a video with crossfades, captions and music | Pollinations + your device |
 | Library | Favourites, filters, search, saved videos | IndexedDB on your device |
 
-Pro ($19 one-time at Monico Labs): 2K exports (2048px long edge) + commercial-use licence. Unlock in the app with your Monico access code — free stays free at 1024px, personal use.
+Pro ([$19 one-time at Monico Labs](https://monico-labs-insta.onrender.com/#/product/freeframe)): 2K exports (2048px long edge) + commercial-use licence. Unlock in the app with your Monico access code — free stays free at 1024px, personal use.
 
 Free-tier limits: Pollinations allows 1 image and 1 AI text reply every 45 s per visitor — FreeFrame queues jobs and shows a countdown. Images carry a small pollinations.ai watermark.
